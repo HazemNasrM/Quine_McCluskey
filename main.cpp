@@ -5,6 +5,7 @@
 #include<algorithm>
 #include<cmath>
 #include<set>
+#include<map>
 using namespace std;
 
 struct binaryInt{
@@ -119,6 +120,71 @@ void takeInput() {
             }
         }
     }
+}
+
+int popcount(string s) {
+    int res = 0;
+    for(auto i : s) if(i == '1') ++res;
+    return res;
+}
+
+// struct comp {
+//     bool operator()(const pair<binaryInt, string> &a, const pair<binaryInt, string> &b) {
+//         if(b.second != a.second) return popcount(a.second) > popcount(b.second);
+//         else return b.first < a.first;
+//     }
+// };
+
+void deleteCol(map<binaryInt, string> &m, int i) {
+    for(auto &[implicant, s] : m) {
+        s.erase(i, 1);
+    }
+}
+
+string toBooleanExpression(const binaryInt &b) {
+    string res = "";
+    int len1 = 32 - __builtin_clz(b.num);
+    int len2 = 32 - __builtin_clz(b.dashes);
+    int len = max(len1, len2);
+
+    for(int i = 0; i < len; ++i) {
+        if(b.dashes && (1<<i)) continue;
+        res += 'A' + i;
+        if(!(b.num & (1<<i))) res += '\'';
+    }
+    return res;
+}
+
+string generateExpression(map<binaryInt, string> &m, const vector<binaryInt> &essential) {
+    vector<binaryInt> final = essential;
+    for(auto i : essential) {
+        string s = m[i];
+        int cnt = 0;
+        for(int j = 0; j < s.length(); ++j) {
+            if(s[j] == '1') {
+                deleteCol(m, j - cnt); ++cnt;
+            }
+        }
+        m.erase(i);
+    }
+
+    while(!m.empty() && !m.begin()->second.empty()) {
+        string s = m.begin()->second;
+        int cnt = 0;
+        for(int i = 0; i < s.length(); ++i) {
+            if(s[i] == '1') {
+                deleteCol(m, i - cnt); ++cnt;
+            }
+        }
+        final.push_back(m.begin()->first);
+        m.erase(m.begin()->first);
+    }
+
+    string res = "";
+    for(auto i : final) {
+        res += toBooleanExpression(i);
+    }
+    return res;
 }
 
 int main() {
