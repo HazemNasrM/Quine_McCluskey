@@ -73,7 +73,7 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
         }
     }
     else {
-        for(unsigned i = 0; i < (1<<(numberOfVariables-1)); ++i) {
+        for(unsigned i = 0; i < (1u<<(numberOfVariables-1)); ++i) {
             if(!MintermSet.count(i) && !DontCareSet.count(i)) {
                 Minterms.push_back(binaryInt(i,0));
             }
@@ -192,14 +192,14 @@ string toBooleanExpression(const binaryInt &b) {
     int len = max(len1, len2);
 
     for(int i = 0; i < len; ++i) {
-        if(b.dashes && (1<<i)) continue;
+        if(b.dashes & (1<<i)) continue;
         res += 'A' + i;
         if(!(b.num & (1<<i))) res += '\'';
     }
     return res;
 }
 
-string generateExpression(vector<binaryInt> minterms,vector<binaryInt> dontCares) {
+string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCares) {
     map<binaryInt,string> m=createPrimeImplicantChart(minterms,dontCares);
     set<binaryInt> essentials=getEssentialPrimeImplicants(minterms,dontCares);
     vector<binaryInt> essential(essentials.begin(),essentials.end());
@@ -228,8 +228,9 @@ string generateExpression(vector<binaryInt> minterms,vector<binaryInt> dontCares
     }
 
     string res = "";
-    for(auto i : final) {
-        res += toBooleanExpression(i);
+    for(int i = 0; i < final.size(); ++i) {
+        res += toBooleanExpression(final[i]);
+        if(i != final.size() - 1) res += " + ";
     }
     return res;
 }
@@ -238,5 +239,7 @@ int main() {
     // freopen("test.txt", "r", stdin);
     vector<binaryInt> minTerms, dontCares;
     takeInput(minTerms, dontCares);
+    set<binaryInt> s = getEssentialPrimeImplicants(minTerms, dontCares);
+    for(auto i : s) cout << i.num << ' ' << i.dashes << endl;
     cout << generateExpression(minTerms,dontCares) << endl;
 }
