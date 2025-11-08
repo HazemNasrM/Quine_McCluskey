@@ -11,9 +11,63 @@ struct binaryInt{
     unsigned num;
     unsigned dashes;
 
-    binaryInt(unsigned n, unsigned d) : num(n), dashes(d) {}
+    binaryInt(unsigned n=0, unsigned d=0) : num(n), dashes(d) {}
+    bool operator<(const binaryInt&other)const{
+        if(num!=other.num){
+            return num<other.num;
+        }
+        return dashes<other.dashes;
+    }
 };
 
+bool are1BitOff(binaryInt a,binaryInt b){
+    if(a.dashes!=b.dashes) return false;
+    return __builtin_popcount(a.num^b.num)==1;
+}
+binaryInt combine(binaryInt a,binaryInt b){
+    if(!are1BitOff(a,b)) throw runtime_error("Not 1 bit off");
+    binaryInt c;
+    c.dashes=a.dashes|(a.num^b.num);
+    c.num=a.num&b.num;
+    return c;
+}
+bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
+    bool modified=false;
+    vector<set<binaryInt>> newGroups(20);
+    for(int i=0; i<19; ++i){
+        for(auto&a:groups[i]){
+            for(auto&b:groups[i+1]){
+                if(are1BitOff(a,b)){
+                    binaryInt c=combine(a,b);
+                    newGroups[i].insert(c);
+                    if(implicants.find(a)!=implicants.end()) implicants.erase(a);
+                    if(implicants.find(b)!=implicants.end()) implicants.erase(b);
+                    implicants.insert(c);
+                    modified=true;
+                }
+            }
+        }
+    }
+    groups=newGroups;
+    return modified;
+}
+set<binaryInt> getPrimeImplicants(vector<binaryInt> minTerms,vector<binaryInt> dontCares){
+    set<binaryInt>  implicants;
+    vector<set<binaryInt>> groups(20);
+    for(auto term:minTerms){
+        implicants.insert(term);
+        groups[__builtin_popcount(term.num)].insert(term);
+    }
+    for(auto&term:dontCares){
+        implicants.insert(term);
+        groups[__builtin_popcount(term.num)].insert(term);
+    }
+    bool b=nextColumn(groups,implicants);
+    while(b){
+        b=nextColumn(groups,implicants);
+    }
+    return implicants;
+} 
 int numberOfVariables;
 vector<binaryInt> Minterms;
 vector<binaryInt> DontCares;
