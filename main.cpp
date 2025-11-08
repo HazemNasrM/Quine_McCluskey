@@ -28,7 +28,7 @@ binaryInt combine(binaryInt a,binaryInt b){
     c.num=a.num&b.num;
     return c;
 }
-bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &essential){
+bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     bool modified=false;
     vector<set<binaryInt>> newGroups(20);
     for(int i=0; i<19; ++i){
@@ -37,9 +37,9 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &essential){
                 if(are1BitOff(a,b)){
                     binaryInt c=combine(a,b);
                     newGroups[i].insert(c);
-                    if(essential.find(a)!=essential.end()) essential.erase(a);
-                    if(essential.find(b)!=essential.end()) essential.erase(b);
-                    essential.insert(c);
+                    if(implicants.find(a)!=implicants.end()) implicants.erase(a);
+                    if(implicants.find(b)!=implicants.end()) implicants.erase(b);
+                    implicants.insert(c);
                     modified=true;
                 }
             }
@@ -49,21 +49,21 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &essential){
     return modified;
 }
 set<binaryInt> getPrimeImplicants(vector<binaryInt> minTerms,vector<binaryInt> dontCares){
-    set<binaryInt>  essential;
+    set<binaryInt>  implicants;
     vector<set<binaryInt>> groups(20);
     for(auto term:minTerms){
-        essential.insert(term);
+        implicants.insert(term);
         groups[__builtin_popcount(term.num)].insert(term);
     }
     for(auto&term:dontCares){
-        essential.insert(term);
+        implicants.insert(term);
         groups[__builtin_popcount(term.num)].insert(term);
     }
-    bool b=nextColumn(groups,essential);
+    bool b=nextColumn(groups,implicants);
     while(b){
-        b=nextColumn(groups,essential);
+        b=nextColumn(groups,implicants);
     }
-    return essential;
+    return implicants;
 } 
 int numberOfVariables;
 string minterms;
