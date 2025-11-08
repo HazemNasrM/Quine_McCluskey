@@ -27,7 +27,7 @@ struct binaryInt{
         return num==b.num&&dashes==b.dashes;
     }
     bool covers(binaryInt b){
-        for(int i=0; i<20; ++i){
+        for(int i=0; i<numberOfVariables; ++i){
             if((num>>i)&1 && !((b.num>>i)&1)) return false;
             if(!((num>>i)&1) && !((dashes>>i)&1) && ((b.num>>i)&1)) return false;
         }
@@ -97,8 +97,8 @@ binaryInt combine(binaryInt a,binaryInt b){
 
 bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     bool modified=false;
-    vector<set<binaryInt>> newGroups(20);
-    for(int i=0; i<19; ++i){
+    vector<set<binaryInt>> newGroups(numberOfVariables+1);
+    for(int i=0; i<numberOfVariables; ++i){
         for(auto&a:groups[i]){
             for(auto&b:groups[i+1]){
                 if(are1BitOff(a,b)){
@@ -118,7 +118,7 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
 
 set<binaryInt> getPrimeImplicants(vector<binaryInt> minterms, vector<binaryInt> dontCares){
     set<binaryInt>  implicants;
-    vector<set<binaryInt>> groups(20);
+    vector<set<binaryInt>> groups(numberOfVariables+1);
     for(auto term:minterms){
         implicants.insert(term);
         groups[__builtin_popcount(term.num)].insert(term);
@@ -165,20 +165,6 @@ set<binaryInt> getEssentialPrimeImplicants(vector<binaryInt> minterms,vector<bin
     return essentialPrimeImplicants;
 }
 
-
-
-int popcount(string s) {
-    int res = 0;
-    for(auto i : s) if(i == '1') ++res;
-    return res;
-}
-
-// struct comp {
-//     bool operator()(const pair<binaryInt, string> &a, const pair<binaryInt, string> &b) {
-//         if(b.second != a.second) return popcount(a.second) > popcount(b.second);
-//         else return b.first < a.first;
-//     }
-// };
 
 void deleteCol(map<binaryInt, string> &m, int i) {
     for(auto &[implicant, s] : m) {
