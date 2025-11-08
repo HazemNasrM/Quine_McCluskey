@@ -6,6 +6,8 @@
 #include<cmath>
 #include<set>
 #include<map>
+#include <stdexcept>
+#include<bitset>
 using namespace std;
 
 int numberOfVariables;
@@ -34,9 +36,9 @@ struct binaryInt{
 
 binaryInt toBinary(string num) {
     binaryInt res(0, 0);
-    for(int i = 0; i < num.length(); ++i) {
-        if(num[i] <= '9' && num[i] >= '0') res.num += (num[i] - '0') * pow(10, num.length() - i - 1);
-    }
+    if(num[0] == ' ') num.erase(0, 2);
+    else num.erase(0,1);
+    res.num=stoi(num);
     return res;
 }
 
@@ -186,17 +188,17 @@ void deleteCol(map<binaryInt, string> &m, int i) {
 }
 
 string toBooleanExpression(const binaryInt &b) {
-    string res = "";
-    int len1 = 32 - __builtin_clz(b.num);
-    int len2 = 32 - __builtin_clz(b.dashes);
-    int len = max(len1, len2);
-
-    for(int i = 0; i < len; ++i) {
-        if(b.dashes & (1<<i)) continue;
-        res += 'A' + i;
-        if(!(b.num & (1<<i))) res += '\'';
+    string out;
+    for(int i=0; i<numberOfVariables; ++i){
+        if(b.num&(1<<i)) out+=('A'+numberOfVariables-i-1);
+        else if(!(b.dashes&(1<<i))){
+            out+='\'';
+            out+='A'-i+numberOfVariables-1;
+            
+        }
     }
-    return res;
+    reverse(out.begin(),out.end());
+    return out;
 }
 
 string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCares) {
@@ -239,7 +241,5 @@ int main() {
     // freopen("test.txt", "r", stdin);
     vector<binaryInt> minTerms, dontCares;
     takeInput(minTerms, dontCares);
-    set<binaryInt> s = getEssentialPrimeImplicants(minTerms, dontCares);
-    for(auto i : s) cout << i.num << ' ' << i.dashes << endl;
     cout << generateExpression(minTerms,dontCares) << endl;
 }
