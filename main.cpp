@@ -7,6 +7,7 @@
 #include<set>
 #include<map>
 #include <stdexcept>
+#include<cstdio>
 #include<bitset>
 using namespace std;
 
@@ -34,12 +35,10 @@ struct binaryInt{
     }
 };
 
-binaryInt toBinary(string num) {
-    binaryInt res(0, 0);
-    if(num[0] == ' ') num.erase(0, 2);
-    else num.erase(0,1);
-    res.num=stoi(num);
-    return res;
+binaryInt toBinary(const string &token) {
+    unsigned v = 0;
+    for(char c : token) if(c >= '0' && c <= '9') v = v*10 + (c - '0');
+    return binaryInt(v, 0);
 }
 
 void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
@@ -238,8 +237,14 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
 }
 
 int main() {
-    // freopen("test.txt", "r", stdin);
+    freopen("test.txt", "r", stdin);
+
     vector<binaryInt> minTerms, dontCares;
-    takeInput(minTerms, dontCares);
-    cout << generateExpression(minTerms,dontCares) << endl;
+    try {
+        takeInput(minTerms, dontCares);
+        cout << generateExpression(minTerms, dontCares) << '\n';
+    } catch(const std::exception &e) {
+        cerr << "Error: " << e.what() << '\n';
+        return 1;
+    }
 }
