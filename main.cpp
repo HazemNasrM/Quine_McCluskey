@@ -5,6 +5,8 @@
 #include<algorithm>
 #include<cmath>
 #include<set>
+#include<map>
+#include<ranges>
 using namespace std;
 
 struct binaryInt{
@@ -12,11 +14,21 @@ struct binaryInt{
     unsigned dashes;
 
     binaryInt(unsigned n=0, unsigned d=0) : num(n), dashes(d) {}
-    bool operator<(const binaryInt&other)const{
-        if(num!=other.num){
-            return num<other.num;
+    bool operator<(binaryInt b){
+        if(num!=b.num){
+            return num<b.num;
         }
-        return dashes<other.dashes;
+        return dashes<b.dashes;
+    }
+    bool operator==(binaryInt b){
+        return num==b.num&&dashes==b.dashes;
+    }
+    bool covers(binaryInt b){
+        for(int i=0; i<20; ++i){
+            if((num>>i)&1 && !((b.num>>i)&1)) return false;
+            if(!((num>>i)&1) && !((dashes>>i)&1) && ((b.num>>i)&1)) return false;
+        }
+        return true;
     }
 };
 
@@ -51,10 +63,10 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     groups=newGroups;
     return modified;
 }
-set<binaryInt> getPrimeImplicants(vector<binaryInt> minTerms,vector<binaryInt> dontCares){
+set<binaryInt> getPrimeImplicants(vector<binaryInt> minterms,vector<binaryInt> dontCares){
     set<binaryInt>  implicants;
     vector<set<binaryInt>> groups(20);
-    for(auto term:minTerms){
+    for(auto term:minterms){
         implicants.insert(term);
         groups[__builtin_popcount(term.num)].insert(term);
     }
@@ -67,7 +79,37 @@ set<binaryInt> getPrimeImplicants(vector<binaryInt> minTerms,vector<binaryInt> d
         b=nextColumn(groups,implicants);
     }
     return implicants;
-} 
+}
+
+map<binaryInt,string> createPrimeImplicantChart(set<binaryInt> implicants,vector<binaryInt> minterms){
+    map<binaryInt,string> primeImplicantChart;
+    for(auto implicant:implicants){
+        for(auto term:minterms){
+            if(implicant.covers(term))  primeImplicantChart[implicant]+='1';
+            else primeImplicantChart[implicant]+='0';
+        }
+    }
+    return primeImplicantChart;
+}
+
+set<binaryInt> getEssentialPrimeImplicants(map<binaryInt,string> primeImplicantChart, vector<binaryInt> minterms){
+    set<binaryInt> essentialPrimeImplicants;
+    for(int i=0; i<minterms.size(); ++i){
+        binaryInt term=minterms[i];
+        int cnt=0;
+        binaryInt tmp;
+        for(auto&[implicant,coverage]:primeImplicantChart){
+            if(coverage[i]=='1'){
+                cnt++;
+                tmp=implicant;
+            }
+        }
+        if(cnt==0) throw runtime_error("Minterm is not covered by any implicant.");
+        else if(cnt==1) essentialPrimeImplicants.insert(tmp);
+    }
+    return essentialPrimeImplicants;
+}
+
 int numberOfVariables;
 vector<binaryInt> Minterms;
 vector<binaryInt> DontCares;
