@@ -42,13 +42,11 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares);
 
 //helpers
 binaryInt toBinaryInt(const string &token);
-string toString(const binaryInt &token);
 
-/* ======================== creating and displaying the PI chart ======================== */
+/* =============================== creating the PI chart =============================== */
 //main functions
 set<binaryInt> getPrimeImplicants(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
-map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
-void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
+map<binaryInt, string> createPrimeImplicantChart(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
 
 //helpers
 bool are1BitOff(const binaryInt &a, const binaryInt &b);
@@ -58,22 +56,37 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants);
 /* ================================ solving the PI chart ================================ */
 //main functions
 set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt, string> &primeImplicantChart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
-void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
 string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCares);
 
 //helpers
 int popcount(string s);
 void deleteCol(map<binaryInt, string> &m, int i, vector<binaryInt> &minterms);
+
+/* ====================================== display ====================================== */
+//main functions
+void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
+void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
+
+//helpers
+void hline(int width);
+string vspace(int width);
 string toBooleanExpression(const binaryInt &b);
+string toString(const binaryInt &token);
 
 int main() {
     cout << "Initializing The Program...\n"
          << "Input File: ";
-    string in; 
+    string in, out;
     if(!(cin >> in)) return 1;
+    
+    cout << "Output File: ";
+    if(!(cin >> out)) return 1;
+
     if(in.length() < 4 || in.substr(in.length() - 4, 4) != ".txt") in += ".txt";
+    if(out.length() < 4 || out.substr(out.length() - 4, 4) != ".txt") out += ".txt";
 
     freopen(in.c_str(), "r", stdin);
+    freopen(out.c_str(), "w", stdout);
 
     vector<binaryInt> minTerms, dontCares;
     try {
@@ -212,6 +225,7 @@ void hline(int width) {
     for(int i = 0; i < width; ++i) cout << '-';
     cout << endl;
 }
+
 string vspace(int width) {
     string s = "";
     for(int i = 0; i < width; ++i) s += " ";
@@ -310,8 +324,8 @@ string toBooleanExpression(const binaryInt &b) {
 }
 
 string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCares) {
-    map<binaryInt,string> m=createPrimeImplicantChart(minterms,dontCares);
-    set<binaryInt> essentials=getEssentialPrimeImplicants(m,minterms,dontCares);
+    map<binaryInt,string> m = createPrimeImplicantChart(minterms,dontCares);
+    set<binaryInt> essentials = getEssentialPrimeImplicants(m,minterms,dontCares);
     vector<binaryInt> essential(essentials.begin(),essentials.end());
     vector<binaryInt> final = essential;
     
