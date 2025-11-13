@@ -158,8 +158,8 @@ binaryInt combine(const binaryInt &a, const binaryInt &b){
 
 bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     bool modified=false;
-    vector<set<binaryInt>> newGroups(20);
-    for(int i=0; i<19; ++i){
+    vector<set<binaryInt>> newGroups(numberOfVariables+1);
+    for(int i=0; i<numberOfVariables; ++i){
         for(auto&a:groups[i]){
             for(auto&b:groups[i+1]){
                 if(are1BitOff(a,b)){
@@ -179,7 +179,7 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
 
 set<binaryInt> getPrimeImplicants(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares){
     set<binaryInt> implicants;
-    vector<set<binaryInt>> groups(20);
+    vector<set<binaryInt>> groups(numberOfVariables+1);
     for(auto term:minterms){
         implicants.insert(term);
         groups[__builtin_popcount(term.num)].insert(term);
