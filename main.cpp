@@ -9,6 +9,7 @@
 #include<stdexcept>
 #include<cstdio>
 #include<bitset>
+#define endl "\n" // to save time on flushing the output stream
 using namespace std;
 
 int numberOfVariables;
@@ -98,13 +99,13 @@ int main() {
         return 1;
     }
 }
-
+// converts string decimals to binaryInt
 binaryInt toBinaryInt(const string &token) {
     unsigned v = 0;
     for(char c : token) if(c >= '0' && c <= '9') v = v*10 + (c - '0');
     return binaryInt(v, 0);
 }
-
+// converts binaryInt to binary string with dashes
 string toString(const binaryInt &token) {
     string s = "";
     for(int i = 0; i < numberOfVariables; ++i) {
@@ -114,7 +115,7 @@ string toString(const binaryInt &token) {
     }
     return s;
 }
-
+// reads the input from the input file and initializes the minterms and dontcare arrays
 void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
     cin >> numberOfVariables;
     string temp;
@@ -135,19 +136,19 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
     }
 
     stringstream SS(dontCares);
-    string dontCare;
-    while(getline(SS, dontCare, ',')) {
+    string dontCare; 
+    while(getline(SS, dontCare, ',')) { // fills dontcares array
         binaryInt b = toBinaryInt(dontCare);
         DontCares.push_back(b);
         DontCareSet.insert(b.num);
     }
-
-    if(minterms[0] == 'm') {
+    // fills minterms array
+    if(minterms[0] == 'm') { 
         for(unsigned i : MintermSet) {
             Minterms.push_back(binaryInt(i,0));
         }
     }
-    else {
+    else { // converts maxterms to minterms 
         for(unsigned i = 0; i < (1u<<(numberOfVariables-1)); ++i) {
             if(!MintermSet.count(i) && !DontCareSet.count(i)) {
                 Minterms.push_back(binaryInt(i,0));
@@ -155,12 +156,12 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
         }
     }
 }
-
+// checks wheter two binaryInt s differy by one bit only
 bool are1BitOff(const binaryInt &a, const binaryInt &b){
     if(a.dashes!=b.dashes) return false;
     return __builtin_popcount(a.num^b.num)==1;
 }
-
+// combines two binaryInts if they differy by one bit 
 binaryInt combine(const binaryInt &a, const binaryInt &b){
     if(!are1BitOff(a,b)) throw runtime_error("Not 1 bit off");
     binaryInt c;
@@ -168,7 +169,7 @@ binaryInt combine(const binaryInt &a, const binaryInt &b){
     c.num=a.num&b.num;
     return c;
 }
-
+// generates the next column of the implicant table given the previous column
 bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     bool modified=false;
     vector<set<binaryInt>> newGroups(numberOfVariables+1);
@@ -189,7 +190,7 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     groups=newGroups;
     return modified;
 }
-
+// finds all prime implicants by generating the prime implicant table 
 set<binaryInt> getPrimeImplicants(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares){
     set<binaryInt> implicants;
     vector<set<binaryInt>> groups(numberOfVariables+1);
@@ -207,7 +208,7 @@ set<binaryInt> getPrimeImplicants(const vector<binaryInt> &minterms, const vecto
     }
     return implicants;
 }
-
+// creates the prime implicant chart given the minterms and dont cares 
 map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares){
     map<binaryInt,string> primeImplicantChart;
     set<binaryInt> implicants=getPrimeImplicants(minterms,dontCares);
@@ -220,18 +221,18 @@ map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterm
     displayPrimeImplicantChart(primeImplicantChart, minterms, dontCares);
     return primeImplicantChart;
 }
-
+// writes a horizontal line of the specified width for formatting purposes 
 void hline(int width) {
     for(int i = 0; i < width; ++i) cout << '-';
     cout << endl;
 }
-
+// adds a space of the specified width for formatting purposes 
 string vspace(int width) {
     string s = "";
     for(int i = 0; i < width; ++i) s += " ";
     return s;
 }
-
+// displays the prime implicant chart in the output file 
 void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares) {
     cout << vspace(12) << "Prime Implicant" << vspace(12) << " | Binary Representation | ";
     vector<int> width;
@@ -269,7 +270,7 @@ void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector
         hline(total_width);
     }
 }
-
+// generates all essential prime implicants given the prime impicant chart
 set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt,string> &primeImplicantChart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares){
     set<binaryInt> essentialPrimeImplicants;
     for(int i=0; i<minterms.size(); ++i){
@@ -288,27 +289,27 @@ set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt,string> &primeImp
     displayEssentialPrimeImplicants(essentialPrimeImplicants, minterms, dontCares);
     return essentialPrimeImplicants;
 }
-
+// displays the essential prime implicants in the output file 
 void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares) {
     for(auto i : EPIs) {
         cout << toBooleanExpression(i) << " | ";
     }
     cout << endl;
 }
-
+// returns the number of ones in a binary string 
 int popcount(string s) {
     int res = 0;
     for(auto i : s) if(i == '1') ++res;
     return res;
 }
-
+// deletes a specific column from the prime implicant chart 
 void deleteCol(map<binaryInt, string> &m, int i, vector<binaryInt> &minterms) {
     for(auto &[implicant, s] : m) {
         s.erase(i, 1);
     }
     minterms.erase(minterms.begin() + i);
 }
-
+// converts a binaryInt to a bolean algebra expression
 string toBooleanExpression(const binaryInt &b) {
     string out;
     for(int i=0; i<numberOfVariables; ++i){
@@ -322,7 +323,7 @@ string toBooleanExpression(const binaryInt &b) {
     reverse(out.begin(),out.end());
     return out;
 }
-
+// generates the final expression of the function
 string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCares) {
     map<binaryInt,string> m = createPrimeImplicantChart(minterms,dontCares);
     set<binaryInt> essentials = getEssentialPrimeImplicants(m,minterms,dontCares);
