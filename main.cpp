@@ -13,6 +13,7 @@
 using namespace std;
 
 int numberOfVariables;
+bool display = false;
 //this struct is meant to represent integers with dashes
 struct binaryInt{
     unsigned num;       //the ones in the represented number match the ones in `num`
@@ -88,6 +89,12 @@ int main() {
 
     freopen(in.c_str(), "r", stdin);
     freopen(out.c_str(), "w", stdout);
+
+    cout << "Warning: Dispalying the PI chart can take several gegabytes of memory for relatively large input!\n"
+         << "Do you want to display intermediate steps? (y/n) ";
+
+    char d; cin >> d;
+    if(d == 'y' || d == 'Y') display = true;
 
     vector<binaryInt> minTerms, dontCares;
     try {
@@ -218,7 +225,7 @@ map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterm
             else primeImplicantChart[implicant]+='0';
         }
     }
-    displayPrimeImplicantChart(primeImplicantChart, minterms, dontCares);
+    if(display) displayPrimeImplicantChart(primeImplicantChart, minterms, dontCares);
     return primeImplicantChart;
 }
 // writes a horizontal line of the specified width for formatting purposes 
@@ -286,7 +293,7 @@ set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt,string> &primeImp
         if(cnt==0) throw runtime_error("Minterm is not covered by any implicant.");
         else if(cnt==1) essentialPrimeImplicants.insert(tmp);
     }
-    displayEssentialPrimeImplicants(essentialPrimeImplicants, minterms, dontCares);
+    if(display) displayEssentialPrimeImplicants(essentialPrimeImplicants, minterms, dontCares);
     return essentialPrimeImplicants;
 }
 // displays the essential prime implicants in the output file 
@@ -343,16 +350,17 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
     }
 
     cout << "\nRemoving EPIs...\n\n";
-    displayPrimeImplicantChart(m, minterms, dontCares);
+    if(display) displayPrimeImplicantChart(m, minterms, dontCares);
 
     //iteratively remove and record PIs that cover the greatest number of minterms
     //also remove the PIs that cover no minterms
     while(!m.empty() && !m.begin()->second.empty()) {
         //find the target PI
         binaryInt target; string target_minterm;
+        vector<binaryInt> unnecassaryPIs;
         for(auto& [pi, minterm] : m) {
             int p1 = popcount(minterm), p2 = popcount(target_minterm);
-            if(p1 == 0) m.erase(pi);    //remove the unnecessary PIs
+            if(p1 == 0) unnecassaryPIs.push_back(pi);    //collect the unnecessary PIs
             else if(p1 > p2) {
                 target = pi;
                 target_minterm = minterm;
@@ -370,6 +378,9 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
         //record the PI and remove it
         final.push_back(target);
         m.erase(target);
+
+        //remove the unnecassary PIs
+        for(auto pi : unnecassaryPIs) m.erase(pi);
     }
 
     string res = "";
