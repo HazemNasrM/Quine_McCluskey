@@ -29,7 +29,7 @@ struct binaryInt{
         return num==b.num&&dashes==b.dashes;
     }
     bool covers(binaryInt b) const{
-        for(int i=0; i<20; ++i){
+        for(int i=0; i < numberOfVariables; ++i){
             if((num>>i)&1 && !((b.num>>i)&1)) return false;
             if(!((num>>i)&1) && !((dashes>>i)&1) && ((b.num>>i)&1)) return false;
         }
@@ -246,11 +246,13 @@ void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector
 
     for(auto minterm : minterms) {
         cout << "m" << minterm.num << " | ";
-        width.push_back(4 + floor(log10(minterm.num)));
+        int len = (minterm.num) ? (1 + floor(log10(minterm.num))) : 1;
+        width.push_back(3 + len);
     }
     for(auto dontCare : dontCares) {
         cout << "d" << dontCare.num << " | ";
-        width.push_back(4 + floor(log10(dontCare.num)));
+        int len = (dontCare.num) ? (1 + floor(log10(dontCare.num))) : 1;
+        width.push_back(3 + len);
     }
     cout << endl;
 
