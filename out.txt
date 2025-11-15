@@ -1,0 +1,1 @@
+Final Expression: B'CD' + BC' + A'D + A'C
