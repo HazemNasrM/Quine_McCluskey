@@ -105,7 +105,7 @@ void generateVerilogFile(const vector<binaryInt> &finalTerms, int numVars, const
         outFile << endl;
     }
 
-    outFile << ",\noutput F" << endl;
+    outFile << ",\noutput Final" << endl;
     outFile << ");" << endl;
 
     // --- Handle edge case: F = 0 ---
@@ -222,9 +222,9 @@ void generateVerilogFile(const vector<binaryInt> &finalTerms, int numVars, const
     outFile << "\n// --- Sum Term (OR gate) ---" << endl;
     if (finalTerms.size() == 1) {
         // Only one term, no OR gate needed. Assign directly.
-        outFile << "assign F = term_0;" << endl;
+        outFile << "assign Final = term_0;" << endl;
     } else {
-        outFile << "or or_final (F, ";
+        outFile << "or or_final (Final, ";
         for (size_t i = 0; i < finalTerms.size(); ++i) {
             outFile << "term_" << i << (i < finalTerms.size() - 1 ? ", " : "");
         }
@@ -251,12 +251,12 @@ int main() {
     if(in.length() < 4 || in.substr(in.length() - 4, 4) != ".txt") in += ".txt";
     if(out.length() < 4 || out.substr(out.length() - 4, 4) != ".txt") out += ".txt";
 
-    // *** FIX: Prompt user *before* redirecting file streams ***
+    // *** Prompt user before redirecting file streams ***
     cout << "Warning: Dispalying the PI chart can take several gegabytes of memory for relatively large input!\n"
          << "Do you want to display intermediate steps? (y/n) ";
     char d; cin >> d;
 
-    // *** FIX: Redirect files *after* user interaction ***
+    // *** Redirect files after user interaction ***
     freopen(in.c_str(), "r", stdin);
     freopen(out.c_str(), "w", stdout);
 
@@ -299,36 +299,46 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
     string dontCares;
     getline(cin, minterms);
     getline(cin, dontCares);
-    if(minterms.empty() || dontCares.empty() || (minterms[0] != 'm' && minterms[0] != 'M')
-                        || dontCares[0] != 'd') throw runtime_error("Invalid Input");
 
+    if(minterms.empty() || dontCares.empty() || (minterms[0] != 'm' && minterms[0] != 'M')
+    || dontCares[0] != 'd') throw runtime_error("Invalid Input");
+    
     set<unsigned> MintermSet;
     set<unsigned> DontCareSet;
-    stringstream ss(minterms);
-    string minterm;
-    while(getline(ss, minterm, ',')) {
-        MintermSet.insert(toBinaryInt(minterm).num);
-    }
 
-    stringstream SS(dontCares);
-    string dontCare;
-    while(getline(SS, dontCare, ',')) { // fills dontcares array
-        binaryInt b = toBinaryInt(dontCare);
-        DontCares.push_back(b);
-        DontCareSet.insert(b.num);
-    }
-    // fills minterms array
-    if(minterms[0] == 'm') {
-        for(unsigned i : MintermSet) {
-            Minterms.push_back(binaryInt(i,0));
+    if(dontCares.length() != 1) {
+        stringstream SS(dontCares);
+        string dontCare;
+        while(getline(SS, dontCare, ',')) { // fills dontcares array
+            binaryInt b = toBinaryInt(dontCare);
+            DontCares.push_back(b);
+            DontCareSet.insert(b.num);
         }
     }
-    else { // converts maxterms to minterms
-        // *** FIX: Corrected loop iterates up to 2^N - 1 ***
-        for(unsigned i = 0; i < (1u << numberOfVariables); ++i) {
-            if(!MintermSet.count(i) && !DontCareSet.count(i)) {
+
+    if(minterms.length() != 1) {
+        stringstream ss(minterms);
+        string minterm;
+        while(getline(ss, minterm, ',')) {
+            MintermSet.insert(toBinaryInt(minterm).num);
+        }
+        // fills minterms array
+        if(minterms[0] == 'm') {
+            for(unsigned i : MintermSet) {
                 Minterms.push_back(binaryInt(i,0));
             }
+        }
+        else { // converts maxterms to minterms
+            for(unsigned i = 0; i < (1u << numberOfVariables); ++i) {
+                if(!MintermSet.count(i) && !DontCareSet.count(i)) {
+                    Minterms.push_back(binaryInt(i,0));
+                }
+            }
+        }
+    }
+    else {
+        if(minterms[0] == 'M') {
+            for(int i = 0; i < (1<<numberOfVariables); ++i) Minterms.push_back(binaryInt(i, 0));
         }
     }
 }
