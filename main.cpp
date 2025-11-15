@@ -66,7 +66,7 @@ void deleteCol(map<binaryInt, string> &m, int i, vector<binaryInt> &minterms);
 
 /* ====================================== display ====================================== */
 //main functions
-void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
+void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares,bool showDontcares);
 void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares);
 
 //helpers
@@ -225,7 +225,7 @@ map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterm
             else primeImplicantChart[implicant]+='0';
         }
     }
-    if(display) displayPrimeImplicantChart(primeImplicantChart, minterms, dontCares);
+    if(display) displayPrimeImplicantChart(primeImplicantChart, minterms, dontCares,true);
     return primeImplicantChart;
 }
 // writes a horizontal line of the specified width for formatting purposes 
@@ -240,7 +240,7 @@ string vspace(int width) {
     return s;
 }
 // displays the prime implicant chart in the output file 
-void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares) {
+void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares,bool showDontcares) {
     cout << vspace(12) << "Prime Implicant" << vspace(12) << " | Binary Representation | ";
     vector<int> width;
     width.push_back(40); width.push_back(23);
@@ -250,10 +250,12 @@ void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector
         int len = (minterm.num) ? (1 + floor(log10(minterm.num))) : 1;
         width.push_back(3 + len);
     }
-    for(auto dontCare : dontCares) {
-        cout << "d" << dontCare.num << " | ";
-        int len = (dontCare.num) ? (1 + floor(log10(dontCare.num))) : 1;
-        width.push_back(3 + len);
+    if(showDontcares) {
+        for(auto dontCare : dontCares) {
+            cout << "d" << dontCare.num << " | ";
+            int len = (dontCare.num) ? (1 + floor(log10(dontCare.num))) : 1;
+            width.push_back(3 + len);
+        }
     }
     cout << endl;
 
@@ -270,10 +272,12 @@ void displayPrimeImplicantChart(const map<binaryInt,string> &chart, const vector
             int w = width[i + 2] - 1;
             cout << vspace(w/2) << minterm[i] << vspace(w - w/2) << "|";
         }
-        for(int i = 0; i < dontCares.size(); ++i) {
-            int w = width[i + minterm.length() + 2] - 1;
-            cout << vspace(w/2) << (pi.covers(dontCares[i])) ? "1" : "0";
-            cout << vspace(w - w/2) << "|";
+        if(showDontcares){
+            for(int i = 0; i < dontCares.size(); ++i) {
+                int w = width[i + minterm.length() + 2] - 1;
+                cout << vspace(w/2) << (pi.covers(dontCares[i])) ? "1" : "0";
+                cout << vspace(w - w/2) << "|";
+            }
         }
         cout << endl;
         hline(total_width);
@@ -301,8 +305,8 @@ set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt,string> &primeImp
 // displays the essential prime implicants in the output file 
 void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares) {
     cout << "\nEssential Prime Implicants: ";
-    for(auto i : EPIs) {
-        cout << toBooleanExpression(i) << " | ";
+    for(int i=0; i<EPIs.size(); ++i) {
+        cout << toBooleanExpression(*next(EPIs.begin(),i)) << (i!=EPIs.size()-1 ? ", ":"");
     }
     cout << endl;
 }
@@ -340,6 +344,7 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
     vector<binaryInt> essential(essentials.begin(),essentials.end());
     vector<binaryInt> final = essential;
     
+    if(display) cout << "\nRemoving EPIs...\n\n";
     //remove and record EPIs and their corresponding minterms
     for(auto i : essential) {
         string s = m[i];
@@ -352,9 +357,8 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
         m.erase(i);
     }
 
-    if(display) cout << "\nRemoving EPIs...\n\n";
-    if(display) cout << "Remaining Minterms after removing EPIs: \n";
-    if(display) displayPrimeImplicantChart(m, minterms, dontCares);
+    if(display) cout << "Remaining Minterms after removing EPIs: \n\n";
+    if(display) displayPrimeImplicantChart(m, minterms, dontCares,false);
 
     //iteratively remove and record PIs that cover the greatest number of minterms
     //also remove the PIs that cover no minterms
