@@ -9,6 +9,7 @@
 #include<stdexcept>
 #include<cstdio>
 #include<bitset>
+#include <fstream> // Added for file writing
 #define endl "\n" // to save time on flushing the output stream
 using namespace std;
 
@@ -75,21 +76,187 @@ string vspace(int width);
 string toBooleanExpression(const binaryInt &b);
 string toString(const binaryInt &token);
 
+// =================================== NEW VERILOG GENERATION ===================================
+
+/**
+  Generates a complete .v Verilog file using Verilog primitives.
+  finalTerms A vector of the binaryInts in the final solution.
+  numVars The total number of variables.
+  booleanExpression The human-readable string (e.g., "A'B + C").
+  verilogFilename The name of the file to create (e.g., "logic_circuit.v").
+ */
+void generateVerilogFile(const vector<binaryInt> &finalTerms, int numVars, const string& booleanExpression, const string& verilogFilename) {
+    ofstream outFile(verilogFilename);
+    if (!outFile) {
+        cerr << "Error: Could not open Verilog file " << verilogFilename << " for writing." << endl;
+        return;
+    }
+    // --- Write Header & Inputs/Outputs ---
+    outFile << "// Function: F = " << booleanExpression << endl;
+    outFile << "// Generated using Verilog primitives." << endl;
+    outFile << "\nmodule logic_function (" << endl;
+
+    // Write input wire list
+    for (int i = 0; i < numVars; ++i) {
+        outFile << "input  " << (char)('A' + i);
+        if (i < numVars - 1) {
+            outFile << ",";
+        }
+        outFile << endl;
+    }
+
+    outFile << ",\noutput F" << endl;
+    outFile << ");" << endl;
+
+    // --- Handle edge case: F = 0 ---
+    if (finalTerms.empty()) {
+        outFile << "\n// Function is always 0" << endl;
+        outFile << "assign F = 1'b0;" << endl;
+        outFile << "\nendmodule" << endl;
+        outFile.close();
+        cerr << "Verilog file generation complete (using primitives)." << endl;
+        return;
+    }
+
+    // --- Handle edge case: F = 1 ---
+    // Check if the only term is '1' (all dashes)
+   bool all_dashes_term = false;
+    if (finalTerms.size() == 1) {
+        bool all_dashes = true;
+        for(int i = 0; i < numVars; ++i) {
+            // Check based on toBooleanExpression logic (LSB to MSB)
+            if (!((finalTerms[0].dashes >> i) & 1u)) {
+                all_dashes = false;
+                break;
+            }
+        }
+        all_dashes_term = all_dashes;
+    }
+
+    if (all_dashes_term) {
+         outFile << "\n// Function is always 1" << endl;
+         outFile << "assign F = 1'b1;" << endl;
+         outFile << "\nendmodule" << endl;
+         outFile.close();
+         cerr << "Verilog file generation complete (using primitives)." << endl;
+         return;
+    }
+
+    // --- 1. Find and declare all needed inverters ---
+    set<char> inverted_vars;
+    for (const auto& term : finalTerms) {
+        for (int i = 0; i < numVars; ++i) {
+            // If bit is '0' (not dash and not '1')
+            if (!(term.dashes & (1u << i)) && !(term.num & (1u << i))) {
+                inverted_vars.insert('A' + (numVars - 1 - i));
+            }
+        }
+    }
+
+    if (!inverted_vars.empty()) {
+        outFile << "// Wires for inverted inputs" << endl;
+        for (char var : inverted_vars) {
+            outFile << "wire not_" << var << ";" << endl;
+        }
+    }
+
+    // Wires for AND gate outputs (one for each product term)
+    if (!finalTerms.empty()) {
+        outFile << "// Wires for product terms (AND gate outputs)" << endl;
+        for (size_t i = 0; i < finalTerms.size(); ++i) {
+            outFile << "wire term_" << i << ";" << endl;
+        }
+    }
+
+    // --- 2. Instantiate Inverters ---
+    if (!inverted_vars.empty()) {
+        outFile << "\n// --- Input Inverters ---" << endl;
+        for (char var : inverted_vars) {
+            outFile << "not inv_" << var << " (not_" << var << ", " << var << ");" << endl;
+        }
+    }
+
+    // --- 3. Instantiate AND gates (Product Terms) ---
+    outFile << "\n// --- Product Terms (AND gates) ---" << endl;
+    for (size_t i = 0; i < finalTerms.size(); ++i) {
+        const auto& term = finalTerms[i];
+        vector<string> and_inputs;
+
+        // Iterate from LSB (bit 0) to MSB
+        for (int j = 0; j < numVars; ++j) {
+            // Map bit position to var name (bit 0 -> 'D', bit 3 -> 'A' for 4 vars)
+            char varName = 'A' + (numVars - 1 - j);
+
+            // If bit is not a dash
+            if (!(term.dashes & (1u << j))) {
+                if (term.num & (1u << j)) { // If it's '1'
+                    and_inputs.push_back(string(1, varName)); // e.g., "A"
+                } else { // If it's '0'
+                    and_inputs.push_back("not_" + string(1, varName)); // e.g., "not_A"
+                }
+            }
+        }
+
+        // Now create the gate
+        outFile << "// Term " << i << ": " << toBooleanExpression(term) << endl;
+        if (and_inputs.empty() && numVars > 0) {
+            // Should be caught by F=1 case, but good to have
+            outFile << "assign term_" << i << " = 1'b1;" << endl;
+        } else if (and_inputs.size() == 1) {
+            // Only one literal in term, just assign it (no gate needed)
+            outFile << "assign term_" << i << " = " << and_inputs[0] << ";" << endl;
+        } else if (!and_inputs.empty()) { // Only build gate if there are inputs
+            // A proper AND gate
+            outFile << "and and_" << i << " (term_" << i << ", ";
+            for (size_t k = 0; k < and_inputs.size(); ++k) {
+                outFile << and_inputs[k] << (k < and_inputs.size() - 1 ? ", " : "");
+            }
+            outFile << ");" << endl;
+        } else {
+            // Case for F=0 (finalTerms is empty), already handled.
+            // This case might be F=1 if numVars is 0, also handled.
+        }
+    }
+
+    // --- 4. Instantiate OR gate (Sum Term) ---
+    outFile << "\n// --- Sum Term (OR gate) ---" << endl;
+    if (finalTerms.size() == 1) {
+        // Only one term, no OR gate needed. Assign directly.
+        outFile << "assign F = term_0;" << endl;
+    } else {
+        outFile << "or or_final (F, ";
+        for (size_t i = 0; i < finalTerms.size(); ++i) {
+            outFile << "term_" << i << (i < finalTerms.size() - 1 ? ", " : "");
+        }
+        outFile << ");" << endl;
+    }
+
+    outFile << "\nendmodule" << endl;
+    outFile.close();
+    cerr << "Verilog file generation complete (using Verilog primitives)." << endl;
+}
+
+// ================================= END NEW VERILOG ==================================
+
+
 int main() {
     cout << "Initializing The Program...\n"
          << "Input File: ";
     string in, out;
     if(!(cin >> in)) return 1;
-    
+
     cout << "Output File: ";
     if(!(cin >> out)) return 1;
 
     if(in.length() < 4 || in.substr(in.length() - 4, 4) != ".txt") in += ".txt";
     if(out.length() < 4 || out.substr(out.length() - 4, 4) != ".txt") out += ".txt";
+
+    // *** FIX: Prompt user *before* redirecting file streams ***
     cout << "Warning: Dispalying the PI chart can take several gegabytes of memory for relatively large input!\n"
          << "Do you want to display intermediate steps? (y/n) ";
-         char d; cin >> d;
+    char d; cin >> d;
 
+    // *** FIX: Redirect files *after* user interaction ***
     freopen(in.c_str(), "r", stdin);
     freopen(out.c_str(), "w", stdout);
 
@@ -99,9 +266,10 @@ int main() {
     vector<binaryInt> minTerms, dontCares;
     try {
         takeInput(minTerms, dontCares);
-        string s = generateExpression(minTerms, dontCares);
+        string s = generateExpression(minTerms, dontCares); // This will also generate the .v file
         cout << "Final Expression: " << s << endl;
     } catch(const std::exception &e) {
+        // Send error to cerr, which is not redirected
         cerr << "Error: " << e.what() << '\n';
         return 1;
     }
@@ -131,7 +299,7 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
     string dontCares;
     getline(cin, minterms);
     getline(cin, dontCares);
-    if(minterms.empty() || dontCares.empty() || (minterms[0] != 'm' && minterms[0] != 'M') 
+    if(minterms.empty() || dontCares.empty() || (minterms[0] != 'm' && minterms[0] != 'M')
                         || dontCares[0] != 'd') throw runtime_error("Invalid Input");
 
     set<unsigned> MintermSet;
@@ -143,20 +311,21 @@ void takeInput(vector<binaryInt> &Minterms, vector<binaryInt> &DontCares) {
     }
 
     stringstream SS(dontCares);
-    string dontCare; 
+    string dontCare;
     while(getline(SS, dontCare, ',')) { // fills dontcares array
         binaryInt b = toBinaryInt(dontCare);
         DontCares.push_back(b);
         DontCareSet.insert(b.num);
     }
     // fills minterms array
-    if(minterms[0] == 'm') { 
+    if(minterms[0] == 'm') {
         for(unsigned i : MintermSet) {
             Minterms.push_back(binaryInt(i,0));
         }
     }
-    else { // converts maxterms to minterms 
-        for(unsigned i = 0; i < (1u<<(numberOfVariables-1)); ++i) {
+    else { // converts maxterms to minterms
+        // *** FIX: Corrected loop iterates up to 2^N - 1 ***
+        for(unsigned i = 0; i < (1u << numberOfVariables); ++i) {
             if(!MintermSet.count(i) && !DontCareSet.count(i)) {
                 Minterms.push_back(binaryInt(i,0));
             }
@@ -168,7 +337,7 @@ bool are1BitOff(const binaryInt &a, const binaryInt &b){
     if(a.dashes!=b.dashes) return false;
     return __builtin_popcount(a.num^b.num)==1;
 }
-// combines two binaryInts if they differy by one bit 
+// combines two binaryInts if they differy by one bit
 binaryInt combine(const binaryInt &a, const binaryInt &b){
     if(!are1BitOff(a,b)) throw runtime_error("Not 1 bit off");
     binaryInt c;
@@ -197,7 +366,7 @@ bool nextColumn(vector<set<binaryInt>> &groups,set<binaryInt> &implicants){
     groups=newGroups;
     return modified;
 }
-// finds all prime implicants by generating the prime implicant table 
+// finds all prime implicants by generating the prime implicant table
 set<binaryInt> getPrimeImplicants(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares){
     set<binaryInt> implicants;
     vector<set<binaryInt>> groups(numberOfVariables+1);
@@ -215,7 +384,7 @@ set<binaryInt> getPrimeImplicants(const vector<binaryInt> &minterms, const vecto
     }
     return implicants;
 }
-// creates the prime implicant chart given the minterms and dont cares 
+// creates the prime implicant chart given the minterms and dont cares
 map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares){
     map<binaryInt,string> primeImplicantChart;
     set<binaryInt> implicants=getPrimeImplicants(minterms,dontCares);
@@ -228,12 +397,12 @@ map<binaryInt,string> createPrimeImplicantChart(const vector<binaryInt> &minterm
     if(display) displayPrimeImplicantChart(primeImplicantChart, minterms, dontCares,true);
     return primeImplicantChart;
 }
-// writes a horizontal line of the specified width for formatting purposes 
+// writes a horizontal line of the specified width for formatting purposes
 void hline(int width) {
     for(int i = 0; i < width; ++i) cout << '-';
     cout << endl;
 }
-// adds a space of the specified width for formatting purposes 
+// adds a space of the specified width for formatting purposes
 string vspace(int width) {
     string s = "";
     for(int i = 0; i < width; ++i) s += " ";
@@ -302,7 +471,7 @@ set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt,string> &primeImp
     if(display) displayEssentialPrimeImplicants(essentialPrimeImplicants, minterms, dontCares);
     return essentialPrimeImplicants;
 }
-// displays the essential prime implicants in the output file 
+// displays the essential prime implicants in the output file
 void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares) {
     cout << "\nEssential Prime Implicants: ";
     for(int i=0; i<EPIs.size(); ++i) {
@@ -310,13 +479,13 @@ void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<bi
     }
     cout << endl;
 }
-// returns the number of ones in a binary string 
+// returns the number of ones in a binary string
 int popcount(string s) {
     int res = 0;
     for(auto i : s) if(i == '1') ++res;
     return res;
 }
-// deletes a specific column from the prime implicant chart 
+// deletes a specific column from the prime implicant chart
 void deleteCol(map<binaryInt, string> &m, int i, vector<binaryInt> &minterms) {
     for(auto &[implicant, s] : m) {
         s.erase(i, 1);
@@ -326,15 +495,23 @@ void deleteCol(map<binaryInt, string> &m, int i, vector<binaryInt> &minterms) {
 // converts a binaryInt to a bolean algebra expression
 string toBooleanExpression(const binaryInt &b) {
     string out;
+    bool all_dashes = true;
     for(int i=0; i<numberOfVariables; ++i){
-        if(b.num&(1<<i)) out+=('A'+numberOfVariables-i-1);
-        else if(!(b.dashes&(1<<i))){
+        if(b.num&(1u<<i)) {
+            out+=('A'+numberOfVariables-i-1);
+            all_dashes = false;
+        }
+        else if(!(b.dashes&(1u<<i))){
             out+='\'';
             out+='A'-i+numberOfVariables-1;
-            
+            all_dashes = false;
         }
     }
     reverse(out.begin(),out.end());
+
+    // Handle the case for a constant '1' (all dashes)
+    if (all_dashes && numberOfVariables > 0) return "1";
+
     return out;
 }
 // generates the final expression of the function
@@ -374,7 +551,7 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
                 target_minterm = minterm;
             }
         }
-        
+
         //delete the corresponding minterms
         int cnt = 0;
         for(int i = 0; i < target_minterm.length(); ++i) {
@@ -384,17 +561,38 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
         }
 
         //record the PI and remove it
-        final.push_back(target);
-        m.erase(target);
+        // Add check to avoid adding empty/default target
+        if (!target_minterm.empty()) {
+            final.push_back(target);
+            m.erase(target);
+        }
 
         //remove the unnecassary PIs
         for(auto pi : unnecassaryPIs) m.erase(pi);
+
+        // Add break condition if no target was found
+        if (target_minterm.empty()) break;
     }
 
     string res = "";
-    for(int i = 0; i < final.size(); ++i) {
-        res += toBooleanExpression(final[i]);
-        if(i != final.size() - 1) res += " + ";
+    // Handle F=0 and F=1 edge cases ***
+    if (final.empty()) {
+        res = "0"; // Function is always 0
+    } else {
+        for(int i = 0; i < final.size(); ++i) {
+            string term_str = toBooleanExpression(final[i]);
+            if (term_str == "1") {
+                res = "1"; // If any term is '1', the whole expression is '1'
+                final = {final[i]}; // Clear other terms for Verilog gen
+                break;
+            }
+            res += term_str;
+            if(i != final.size() - 1) res += " + ";
+        }
     }
+
+    // We pass 'final' (the list of terms) and 'res' (the string "A'B + C")
+    generateVerilogFile(final, numberOfVariables, res, "logic_circuit.v");
+
     return res;
 }
