@@ -86,14 +86,14 @@ int main() {
 
     if(in.length() < 4 || in.substr(in.length() - 4, 4) != ".txt") in += ".txt";
     if(out.length() < 4 || out.substr(out.length() - 4, 4) != ".txt") out += ".txt";
+    cout << "Warning: Dispalying the PI chart can take several gegabytes of memory for relatively large input!\n"
+         << "Do you want to display intermediate steps? (y/n) ";
+         char d; cin >> d;
 
     freopen(in.c_str(), "r", stdin);
     freopen(out.c_str(), "w", stdout);
 
-    cout << "Warning: Dispalying the PI chart can take several gegabytes of memory for relatively large input!\n"
-         << "Do you want to display intermediate steps? (y/n) ";
 
-    char d; cin >> d;
     if(d == 'y' || d == 'Y') display = true;
 
     vector<binaryInt> minTerms, dontCares;
@@ -300,6 +300,7 @@ set<binaryInt> getEssentialPrimeImplicants(const map<binaryInt,string> &primeImp
 }
 // displays the essential prime implicants in the output file 
 void displayEssentialPrimeImplicants(const set<binaryInt> &EPIs, const vector<binaryInt> &minterms, const vector<binaryInt> &dontCares) {
+    cout << "\nEssential Prime Implicants: ";
     for(auto i : EPIs) {
         cout << toBooleanExpression(i) << " | ";
     }
@@ -351,7 +352,8 @@ string generateExpression(vector<binaryInt> &minterms,vector<binaryInt> &dontCar
         m.erase(i);
     }
 
-    cout << "\nRemoving EPIs...\n\n";
+    if(display) cout << "\nRemoving EPIs...\n\n";
+    if(display) cout << "Remaining Minterms after removing EPIs: \n";
     if(display) displayPrimeImplicantChart(m, minterms, dontCares);
 
     //iteratively remove and record PIs that cover the greatest number of minterms
